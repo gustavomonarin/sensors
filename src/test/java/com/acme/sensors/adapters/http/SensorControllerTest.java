@@ -2,6 +2,7 @@ package com.acme.sensors.adapters.http;
 
 import com.acme.sensors.domain.SensorApplicationService;
 import com.acme.sensors.domain.SensorMeasurement.MeasurementCollected;
+import com.acme.sensors.domain.SensorState;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs;
@@ -14,6 +15,7 @@ import reactor.core.publisher.Mono;
 import java.time.ZonedDateTime;
 
 import static com.acme.sensors.domain.SensorMeasurement.CollectNewMeasurement;
+import static com.acme.sensors.domain.SensorState.CurrentState.Status.OK;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.restdocs.webtestclient.WebTestClientRestDocumentation.document;
@@ -45,9 +47,23 @@ class SensorControllerTest {
                 .expectStatus().is2xxSuccessful()
                 .expectBody().consumeWith(document("collect-measurement")
         );
+    }
+
+    @Test
+    void status() {
+        when(applicationService.currentStateFor("my-uuid"))
+                .thenReturn(Mono.just(new SensorState.CurrentState("my-uuid", OK, 0)));
+
+        webTestClient.get()
+                .uri("/api/v1/sensors/my-uuid")
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().is2xxSuccessful()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo("OK")
+                .consumeWith(document("current-status"));
 
 
     }
-
 
 }

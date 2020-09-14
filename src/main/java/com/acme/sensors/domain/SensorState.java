@@ -8,7 +8,7 @@ public class SensorState {
     public static record CurrentState(String uuid, Status status, Integer neededMeasurementsToRecover)
             implements Definitions.State {
 
-        enum Status {
+        public enum Status {
             OK, WARN, ESCALATED, ALERT;
         }
 

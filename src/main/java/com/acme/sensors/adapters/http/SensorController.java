@@ -29,4 +29,16 @@ public class SensorController {
                         .map(__ -> ResponseEntity.ok().build());
     }
 
+    @GetMapping(value = "{uuid}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<ResponseEntity<SensorStatusResponse>> status(@PathVariable String uuid) {
+        return
+                applicationService
+                        .currentStateFor(uuid)
+                        .map(currentState ->
+                                ResponseEntity.ok()
+                                        .body(SensorStatusResponse
+                                                .fromState(currentState)));
+    }
+
+
 }
