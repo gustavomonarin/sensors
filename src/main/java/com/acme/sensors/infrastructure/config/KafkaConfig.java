@@ -8,6 +8,10 @@ import org.springframework.context.annotation.Configuration;
 public class KafkaConfig {
 
     private String sensorMeasurementsTopic = "sensor-measurements";
+    private String sensorStateStateStoreName = "sensor-status";
+    private String sensorStateEventsTopic = "sensor-events";
+
+
 
     public String getSensorMeasurementsTopic() {
         return sensorMeasurementsTopic;
@@ -17,4 +21,19 @@ public class KafkaConfig {
         this.sensorMeasurementsTopic = sensorMeasurementsTopic;
     }
 
+    public String getSensorStateStateStoreName() {
+        return sensorStateStateStoreName;
+    }
+
+    public void setSensorStateStateStoreName(String sensorStateStateStoreName) {
+        this.sensorStateStateStoreName = sensorStateStateStoreName;
+    }
+
+    public String getSensorStateEventsTopic() {
+        return sensorStateEventsTopic;
+    }
+
+    public void setSensorStateEventsTopic(String sensorStateEventsTopic) {
+        this.sensorStateEventsTopic = sensorStateEventsTopic;
+    }
 }

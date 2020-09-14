@@ -1,0 +1,6 @@
+spring:
+  application.name: sensors
+
+  kafka:
+    producer:
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer

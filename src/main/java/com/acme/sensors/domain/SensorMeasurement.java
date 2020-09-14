@@ -6,12 +6,12 @@ public class SensorMeasurement {
     public static record CollectNewMeasurement(
             String uuid,
             Integer co2,
-            ZonedDateTime time) {
+            ZonedDateTime time) implements Definitions.Command {
     }
 
-    public static record MeasurementCollected(
+    public static record MeasurementCollected (
             String uuid,
             Integer co2,
-            ZonedDateTime time) {
+            ZonedDateTime time) implements Definitions.Event {
     }
 }

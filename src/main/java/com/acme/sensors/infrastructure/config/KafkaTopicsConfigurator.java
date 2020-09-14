@@ -15,4 +15,13 @@ public class KafkaTopicsConfigurator {
                 (short) 1
         );
     }
+
+    @Bean
+    NewTopic stateEvents(KafkaConfig config){
+        return new NewTopic(
+                config.getSensorStateEventsTopic(),
+                3,
+                (short) 1
+        );
+    }
 }
