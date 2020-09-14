@@ -32,9 +32,19 @@ dependencies {
 test {
 	outputs.dir snippetsDir
 	useJUnitPlatform()
+	jvmArgs("--enable-preview")
 }
 
 asciidoctor {
 	inputs.dir snippetsDir
 	dependsOn test
+}
+
+tasks.withType(JavaCompile) {
+	options.incremental = true
+	options.compilerArgs.add("--enable-preview") // records and switch features in preview ;)
+}
+
+tasks.withType(JavaExec) {
+	jvmArgs += '--enable-preview'
 }
