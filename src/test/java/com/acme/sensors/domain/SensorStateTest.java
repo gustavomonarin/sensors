@@ -4,8 +4,10 @@ import com.acme.sensors.domain.SensorState.*;
 import com.acme.sensors.domain.SensorState.StateEvent.*;
 import org.junit.jupiter.api.Test;
 
+import java.util.Optional;
+
 import static com.acme.sensors.domain.SensorState.CurrentState.REQ_CONSECUTIVE_HEALTH_TO_RECOVER;
-import static com.acme.sensors.domain.SensorState.CurrentState.Status.*;
+import static com.acme.sensors.domain.SensorState.Status.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class SensorStateTest {
@@ -18,7 +20,7 @@ class SensorStateTest {
     @Test
     void nonActivatedSensorMeasurementBellowThreshold() {
 
-        Definitions.Event newEvent = commandHandler.handle(BELLOW_THRESHOLD, null);
+        Definitions.Event newEvent = commandHandler.handle(BELLOW_THRESHOLD, null).get();
         assertThat(newEvent)
                 .isInstanceOfSatisfying(SensorRecovered.class,
                         (recovered) -> assertThat(recovered.uuid()).isEqualTo("uuid"));
@@ -27,7 +29,7 @@ class SensorStateTest {
 
     @Test
     void nonActivatedSensorMeasurementAboveThreshold() {
-        Definitions.Event newEvent = commandHandler.handle(ABOVE_THRESHOLD, null);
+        Definitions.Event newEvent = commandHandler.handle(ABOVE_THRESHOLD, null).get();
         assertThat(newEvent)
                 .isInstanceOfSatisfying(SensorBecameWarning.class,
                         (warning) -> assertThat(warning.uuid()).isEqualTo("uuid"));
@@ -38,16 +40,16 @@ class SensorStateTest {
     void healthySensorMeasurementBelowThreshold() {
         CurrentState currentlyHealthy = new CurrentState("uuid", OK, 0);
 
-        Definitions.Event newEvent = commandHandler.handle(BELLOW_THRESHOLD, currentlyHealthy);
+        Optional<?> newEvent = commandHandler.handle(BELLOW_THRESHOLD, currentlyHealthy);
 
-        assertThat(newEvent).isNull();
+        assertThat(newEvent).isEmpty();
     }
 
     @Test
     void healthySensorMeasurementAboveThreshold() {
         CurrentState currentlyHealthy = new CurrentState("uuid", OK, 0);
 
-        Definitions.Event newEvent = commandHandler.handle(ABOVE_THRESHOLD, currentlyHealthy);
+        Definitions.Event newEvent = commandHandler.handle(ABOVE_THRESHOLD, currentlyHealthy).get();
 
         assertThat(newEvent).isInstanceOfSatisfying(SensorBecameWarning.class,
                 (warning) -> assertThat(warning.uuid()).isEqualTo("uuid"));
@@ -58,7 +60,7 @@ class SensorStateTest {
     void warningSensorMeasureBelowThreshold() {
         CurrentState currentlyWarning = new CurrentState("uuid", WARN, 0);
 
-        StateEvent newEvent = commandHandler.handle(BELLOW_THRESHOLD, currentlyWarning);
+        StateEvent newEvent = commandHandler.handle(BELLOW_THRESHOLD, currentlyWarning).get();
 
         assertThat(newEvent).isInstanceOfSatisfying(SensorRecovered.class,
                 (sensorRecovered -> assertThat(sensorRecovered.uuid()).isEqualTo("uuid")));
@@ -68,7 +70,7 @@ class SensorStateTest {
     void warningSensorMeasureAboveThreshold() {
         CurrentState currentlyWarning = new CurrentState("uuid", WARN, 0);
 
-        StateEvent newEvent = commandHandler.handle(ABOVE_THRESHOLD, currentlyWarning);
+        StateEvent newEvent = commandHandler.handle(ABOVE_THRESHOLD, currentlyWarning).get();
 
         assertThat(newEvent).isInstanceOfSatisfying(SensorWarningEscalated.class,
                 (escalated -> assertThat(escalated.uuid()).isEqualTo("uuid")));
@@ -80,7 +82,7 @@ class SensorStateTest {
     void escalatedSensorMeasureBelowThreshold() {
         CurrentState currentlyWarning = new CurrentState("uuid", ESCALATED, 0);
 
-        StateEvent newEvent = commandHandler.handle(BELLOW_THRESHOLD, currentlyWarning);
+        StateEvent newEvent = commandHandler.handle(BELLOW_THRESHOLD, currentlyWarning).get();
 
         assertThat(newEvent).isInstanceOfSatisfying(SensorRecovered.class,
                 (sensorRecovered -> assertThat(sensorRecovered.uuid()).isEqualTo("uuid")));
@@ -90,7 +92,7 @@ class SensorStateTest {
     void escalatedSensorMeasureAboveThreshold() {
         CurrentState currentlyWarning = new CurrentState("uuid", ESCALATED, 0);
 
-        StateEvent newEvent = commandHandler.handle(ABOVE_THRESHOLD, currentlyWarning);
+        StateEvent newEvent = commandHandler.handle(ABOVE_THRESHOLD, currentlyWarning).get();
 
         assertThat(newEvent).isInstanceOfSatisfying(SensorBecameAlerting.class,
                 (alerting -> assertThat(alerting.uuid()).isEqualTo("uuid")));
@@ -101,16 +103,16 @@ class SensorStateTest {
     void alertSensorMeasureAboveThresholdWithCountDownFull() {
         CurrentState currentlyWarning = new CurrentState("uuid", ALERT, REQ_CONSECUTIVE_HEALTH_TO_RECOVER);
 
-        StateEvent newEvent = commandHandler.handle(ABOVE_THRESHOLD, currentlyWarning);
+        Optional<?> newEvent = commandHandler.handle(ABOVE_THRESHOLD, currentlyWarning);
 
-        assertThat(newEvent).isNull(); // no change
+        assertThat(newEvent).isEmpty(); // no change
     }
 
     @Test
     void alertSensorMeasureConsecutiveBellowThreshold() {
         CurrentState currentlyWarning = new CurrentState("uuid", ALERT, REQ_CONSECUTIVE_HEALTH_TO_RECOVER - 2);
 
-        StateEvent newEvent = commandHandler.handle(BELLOW_THRESHOLD, currentlyWarning);
+        StateEvent newEvent = commandHandler.handle(BELLOW_THRESHOLD, currentlyWarning).get();
 
         assertThat(newEvent).isInstanceOfSatisfying(SensorRecovered.class,
                 (recovered -> assertThat(recovered.uuid()).isEqualTo("uuid")));
@@ -120,7 +122,7 @@ class SensorStateTest {
     void alertSensorMeasureBellowThresholdWithCountDownInitiated() {
         CurrentState currentlyWarning = new CurrentState("uuid", ALERT, REQ_CONSECUTIVE_HEALTH_TO_RECOVER);
 
-        StateEvent newEvent = commandHandler.handle(BELLOW_THRESHOLD, currentlyWarning);
+        StateEvent newEvent = commandHandler.handle(BELLOW_THRESHOLD, currentlyWarning).get();
 
         assertThat(newEvent).isInstanceOfSatisfying(SensorStartedRecovering.class,
                 (recovering -> {
@@ -133,7 +135,7 @@ class SensorStateTest {
     void alertSensorMeasureAboveThresholdWithCountDownInitiated() {
         CurrentState currentlyWarning = new CurrentState("uuid", ALERT, REQ_CONSECUTIVE_HEALTH_TO_RECOVER - 2);
 
-        StateEvent newEvent = commandHandler.handle(ABOVE_THRESHOLD, currentlyWarning);
+        StateEvent newEvent = commandHandler.handle(ABOVE_THRESHOLD, currentlyWarning).get();
 
         assertThat(newEvent).isInstanceOfSatisfying(SensorFailedRecovering.class,
                 (failed -> assertThat(failed.uuid()).isEqualTo("uuid")));

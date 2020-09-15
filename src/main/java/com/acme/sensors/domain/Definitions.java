@@ -2,6 +2,8 @@ package com.acme.sensors.domain;
 
 import org.springframework.lang.Nullable;
 
+import java.util.Optional;
+
 public class Definitions {
 
     public interface Command {
@@ -20,7 +22,7 @@ public class Definitions {
      */
     public interface StatefulCommandHandler<C extends Command, S extends State, E extends Event> {
 
-        E handle(C command, @Nullable S currentState);
+        Optional<E> handle(C command, @Nullable S currentState);
 
     }
 

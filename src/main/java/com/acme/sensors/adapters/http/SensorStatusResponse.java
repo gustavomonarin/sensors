@@ -22,12 +22,15 @@ public class SensorStatusResponse {
     }
 
     public static SensorStatusResponse fromState(SensorState.CurrentState currentState) {
-        String state = switch (currentState.status()) {
+        String status = switch (currentState.status()) {
             case OK -> "OK";
             case ALERT -> "ALERT";
             case ESCALATED, WARN -> "WARN";
+            case UNKNOWN -> "UNKNOWN";
         };
 
-        return new SensorStatusResponse(state);
+
+
+        return new SensorStatusResponse(status);
     }
 }

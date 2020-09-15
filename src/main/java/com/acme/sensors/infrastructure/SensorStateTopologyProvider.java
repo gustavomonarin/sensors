@@ -23,6 +23,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafkaStreams;
 import org.springframework.kafka.support.serializer.JsonSerde;
 
+import java.util.Optional;
+
 @EnableKafkaStreams
 @Configuration(proxyBeanMethods = false)
 public class SensorStateTopologyProvider {
@@ -100,14 +102,14 @@ public class SensorStateTopologyProvider {
 
             S currentState = stateStore.get(key);
 
-            E newEvent = commandHandler.handle(command, currentState);
+            Optional<E> newEvent = commandHandler.handle(command, currentState);
 
-            if (newEvent != null) {
-                S newState = eventHandler.on(newEvent, currentState);
+            if (newEvent.isPresent()) {
+                S newState = eventHandler.on(newEvent.get(), currentState);
 
                 this.stateStore.put(key, newState);
 
-                return new KeyValue<>(key, newEvent);
+                return new KeyValue<>(key, newEvent.get());
             }
 
             return null; //no new event to propagate side effects
