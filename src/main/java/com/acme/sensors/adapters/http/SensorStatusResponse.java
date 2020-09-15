@@ -2,6 +2,8 @@ package com.acme.sensors.adapters.http;
 
 import com.acme.sensors.domain.SensorState;
 
+import static com.acme.sensors.domain.SensorState.Status.*;
+
 public class SensorStatusResponse {
 
     private String status;
@@ -22,12 +24,15 @@ public class SensorStatusResponse {
     }
 
     public static SensorStatusResponse fromState(SensorState.CurrentState currentState) {
-        String state = switch (currentState.status()) {
-            case OK -> "OK";
-            case ALERT -> "ALERT";
-            case ESCALATED, WARN -> "WARN";
-        };
+        String status;
+        if (currentState.status() == OK) {
+            status = "OK";
+        } else if (currentState.status() == ALERT) {
+            status = "ALERT";
+        } else {
+            status = "WARN";
+        }
 
-        return new SensorStatusResponse(state);
+        return new SensorStatusResponse(status);
     }
 }

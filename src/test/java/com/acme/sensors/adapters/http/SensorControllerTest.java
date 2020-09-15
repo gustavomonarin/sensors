@@ -15,7 +15,7 @@ import reactor.core.publisher.Mono;
 import java.time.ZonedDateTime;
 
 import static com.acme.sensors.domain.SensorMeasurement.CollectNewMeasurement;
-import static com.acme.sensors.domain.SensorState.CurrentState.Status.OK;
+import static com.acme.sensors.domain.SensorState.Status.OK;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.restdocs.webtestclient.WebTestClientRestDocumentation.document;

@@ -36,7 +36,7 @@ class KafkaSensorStateRepositoryTest {
                             SensorState.CurrentState currentState = repository.currentStateFor(anUuid).block();
 
                             assertThat(currentState).isNotNull();
-                            assertThat(currentState.status()).isEqualTo(SensorState.CurrentState.Status.OK);
+                            assertThat(currentState.status()).isEqualTo(SensorState.Status.OK);
                         }
                 );
     }

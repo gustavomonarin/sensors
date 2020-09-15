@@ -3,14 +3,12 @@ package com.acme.sensors.domain;
 import com.acme.sensors.domain.SensorState.StateEvent.*;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
+import java.util.Optional;
+
 public class SensorState {
 
-    public static record CurrentState(String uuid, Status status, Integer neededMeasurementsToRecover)
+    public static record CurrentState(String uuid, Status<?> status, Integer neededMeasurementsToRecover)
             implements Definitions.State {
-
-        public enum Status {
-            OK, WARN, ESCALATED, ALERT;
-        }
 
         public static final int REQ_CONSECUTIVE_HEALTH_TO_RECOVER = 3;
 
@@ -18,20 +16,68 @@ public class SensorState {
             return neededMeasurementsToRecover - 1;
         }
 
-        boolean hasStartedToRecover(){
+        boolean hasStartedToRecover() {
             return status == Status.ALERT && neededMeasurementsToRecover != REQ_CONSECUTIVE_HEALTH_TO_RECOVER;
         }
 
-        boolean isReadyToRecover(){
+        boolean isReadyToRecover() {
             return neededMeasurementsToRecover == 1;
         }
 
+    }
+
+    @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, include = JsonTypeInfo.As.PROPERTY, property = "@class")
+    public interface Status<E extends StateEvent> {
+
+        Optional<E> apply(UpdateCurrentState updateCurrentState, CurrentState currentState);
+
+        Status<?> OK = (final UpdateCurrentState command, final CurrentState currentState) ->
+                switch (command.measurementType()) {
+                    case HIGH -> Optional.of(new SensorBecameWarning(command.uuid()));
+                    case LOW -> Optional.empty();
+                };
+
+        Status<?> WARN = (UpdateCurrentState command, CurrentState currentState) ->
+                switch (command.measurementType()) {
+                    case HIGH -> Optional.of(new SensorWarningEscalated(command.uuid()));
+                    case LOW -> Optional.of(new SensorRecovered(command.uuid()));
+                };
+
+        Status<?> ESCALATED = (UpdateCurrentState command, CurrentState currentState) ->
+                switch (command.measurementType()) {
+                    case HIGH -> Optional.of(new SensorBecameAlerting(command.uuid()));
+                    case LOW -> Optional.of(new SensorRecovered(command.uuid()));
+                };
+
+        Status<?> ALERT = (UpdateCurrentState command, CurrentState currentState) ->
+                switch (command.measurementType()) {
+                    case HIGH -> currentState.hasStartedToRecover()
+                            ? Optional.of(new SensorFailedRecovering(currentState.uuid))
+                            : Optional.empty();
+                    case LOW -> currentState.isReadyToRecover()
+                            ? Optional.of(new SensorRecovered(command.uuid()))
+                            : Optional.of(new SensorStartedRecovering(command.uuid(), currentState.countDownToRecover()));
+                };
+
+        Status<?> UNKNOW = (final UpdateCurrentState command, final CurrentState currentState) ->
+                        switch (command.measurementType()) {
+                            case HIGH -> Optional.of(new SensorBecameWarning(command.uuid()));
+                            case LOW -> Optional.of(new SensorRecovered(command.uuid));
+                        };
     }
 
     public static record UpdateCurrentState(
             String uuid,
             Integer co2)
             implements Definitions.Command {
+
+        enum MeasurementType {
+            HIGH, LOW
+        }
+
+        MeasurementType measurementType() {
+            return co2 > 2_000 ? MeasurementType.HIGH : MeasurementType.LOW;
+        }
     }
 
     @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, include = JsonTypeInfo.As.PROPERTY, property = "@class")
@@ -62,45 +108,15 @@ public class SensorState {
             implements Definitions.StatefulCommandHandler<UpdateCurrentState, CurrentState, E> {
 
         @Override
-        public E handle(UpdateCurrentState updateCurrentState, CurrentState currentState) {
-
-            // replace this messy logic by some sort of clever enum, but still stateless, maybe emulating trait/object from scala
-
-            StateEvent sideEffectEvent = null;
+        public Optional<E> handle(UpdateCurrentState command, CurrentState currentState) {
 
             // non activated sensor
             if (currentState == null) {
-                sideEffectEvent = isBelowThreshold(updateCurrentState.co2)
-                        ? new SensorRecovered(updateCurrentState.uuid)
-                        : new SensorBecameWarning(updateCurrentState.uuid);
-
-            } else if (CurrentState.Status.OK == currentState.status()) {
-                if (isAboveThreshold(updateCurrentState.co2))
-                    sideEffectEvent = new SensorBecameWarning(updateCurrentState.uuid);
-
-            } else if (CurrentState.Status.WARN == currentState.status()) {
-                sideEffectEvent = isBelowThreshold(updateCurrentState.co2)
-                        ? new SensorRecovered(updateCurrentState.uuid)
-                        : new SensorWarningEscalated(updateCurrentState.uuid);
-
-            } else if (CurrentState.Status.ESCALATED == currentState.status()) {
-                sideEffectEvent = isBelowThreshold(updateCurrentState.co2)
-                        ? new SensorRecovered(updateCurrentState.uuid)
-                        : new SensorBecameAlerting(updateCurrentState.uuid);
-
-            } else if (CurrentState.Status.ALERT == currentState.status()) {
-                if (isBelowThreshold(updateCurrentState.co2)) {
-                    if (currentState.isReadyToRecover()) {
-                        sideEffectEvent = new SensorRecovered(updateCurrentState.uuid);
-                    } else {
-                        sideEffectEvent = new SensorStartedRecovering(updateCurrentState.uuid, currentState.countDownToRecover());
-                    }
-                } else if (currentState.hasStartedToRecover()) {
-                    sideEffectEvent = new SensorFailedRecovering(currentState.uuid);
-                }
+                return (Optional<E>) Status.UNKNOW.apply(command, currentState);
             }
-
-            return (E) sideEffectEvent;
+            else{
+                return (Optional<E>) currentState.status.apply(command, currentState);
+            }
         }
 
 
@@ -123,19 +139,18 @@ public class SensorState {
             //Using JEP 305: Pattern Matching for instanceof .
             // Once there is a finally a decent switch expression in java, with the jep-305, this code should look better
             if (e instanceof SensorRecovered recovered) {
-                return new CurrentState(recovered.uuid, CurrentState.Status.OK, 0);
+                return new CurrentState(recovered.uuid, Status.OK, 0);
             } else if (e instanceof SensorBecameWarning warning) {
-                return new CurrentState(warning.uuid, CurrentState.Status.WARN, 0);
-            } else if (e instanceof SensorWarningEscalated escalated){
-                return new CurrentState(currentState.uuid, CurrentState.Status.ESCALATED, 0);
-            }  else if ( e instanceof SensorBecameAlerting alerting) {
-                return new CurrentState(currentState.uuid, CurrentState.Status.ALERT, CurrentState.REQ_CONSECUTIVE_HEALTH_TO_RECOVER);
-            } else if ( e instanceof SensorFailedRecovering failed) {
-                return new CurrentState(currentState.uuid, CurrentState.Status.ALERT, CurrentState.REQ_CONSECUTIVE_HEALTH_TO_RECOVER);
-            } else if ( e instanceof SensorStartedRecovering recovering) {
-                return new CurrentState(currentState.uuid, CurrentState.Status.ALERT, recovering.countDownToHealth);
+                return new CurrentState(warning.uuid, Status.WARN, 0);
+            } else if (e instanceof SensorWarningEscalated escalated) {
+                return new CurrentState(currentState.uuid, Status.ESCALATED, 0);
+            } else if (e instanceof SensorBecameAlerting alerting) {
+                return new CurrentState(currentState.uuid, Status.ALERT, CurrentState.REQ_CONSECUTIVE_HEALTH_TO_RECOVER);
+            } else if (e instanceof SensorFailedRecovering failed) {
+                return new CurrentState(currentState.uuid, Status.ALERT, CurrentState.REQ_CONSECUTIVE_HEALTH_TO_RECOVER);
+            } else if (e instanceof SensorStartedRecovering recovering) {
+                return new CurrentState(currentState.uuid, Status.ALERT, recovering.countDownToHealth);
             }
-
 
             return null;
         }
