@@ -4,10 +4,11 @@ import com.acme.sensors.domain.SensorState.StateEvent.*;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
 import java.util.Optional;
+import java.util.function.BiFunction;
 
 public class SensorState {
 
-    public static record CurrentState(String uuid, Status<?> status, Integer neededMeasurementsToRecover)
+    public static record CurrentState(String uuid, Status status, Integer neededMeasurementsToRecover)
             implements Definitions.State {
 
         public static final int REQ_CONSECUTIVE_HEALTH_TO_RECOVER = 3;
@@ -26,44 +27,55 @@ public class SensorState {
 
     }
 
-    @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, include = JsonTypeInfo.As.PROPERTY, property = "@class")
-    public interface Status<E extends StateEvent> {
+    public enum Status {
+        OK(
+                (final UpdateCurrentState command, final CurrentState currentState) ->
+                        switch (command.measurementType()) {
+                            case HIGH -> Optional.of(new SensorBecameWarning(command.uuid()));
+                            case LOW -> Optional.empty();
+                        }),
 
-        Optional<E> apply(UpdateCurrentState updateCurrentState, CurrentState currentState);
+        WARN(
+                (UpdateCurrentState command, CurrentState currentState) ->
+                        switch (command.measurementType()) {
+                            case HIGH -> Optional.of(new SensorWarningEscalated(command.uuid()));
+                            case LOW -> Optional.of(new SensorRecovered(command.uuid()));
+                        }),
 
-        Status<?> OK = (final UpdateCurrentState command, final CurrentState currentState) ->
-                switch (command.measurementType()) {
-                    case HIGH -> Optional.of(new SensorBecameWarning(command.uuid()));
-                    case LOW -> Optional.empty();
-                };
+        ESCALATED(
+                (UpdateCurrentState command, CurrentState currentState) ->
+                        switch (command.measurementType()) {
+                            case HIGH -> Optional.of(new SensorBecameAlerting(command.uuid()));
+                            case LOW -> Optional.of(new SensorRecovered(command.uuid()));
+                        }),
 
-        Status<?> WARN = (UpdateCurrentState command, CurrentState currentState) ->
-                switch (command.measurementType()) {
-                    case HIGH -> Optional.of(new SensorWarningEscalated(command.uuid()));
-                    case LOW -> Optional.of(new SensorRecovered(command.uuid()));
-                };
+        ALERT(
+                (UpdateCurrentState command, CurrentState currentState) ->
+                        switch (command.measurementType()) {
+                            case HIGH -> currentState.hasStartedToRecover()
+                                    ? Optional.of(new SensorFailedRecovering(currentState.uuid))
+                                    : Optional.empty();
+                            case LOW -> currentState.isReadyToRecover()
+                                    ? Optional.of(new SensorRecovered(command.uuid()))
+                                    : Optional.of(new SensorStartedRecovering(command.uuid(), currentState.countDownToRecover()));
+                        }),
 
-        Status<?> ESCALATED = (UpdateCurrentState command, CurrentState currentState) ->
-                switch (command.measurementType()) {
-                    case HIGH -> Optional.of(new SensorBecameAlerting(command.uuid()));
-                    case LOW -> Optional.of(new SensorRecovered(command.uuid()));
-                };
-
-        Status<?> ALERT = (UpdateCurrentState command, CurrentState currentState) ->
-                switch (command.measurementType()) {
-                    case HIGH -> currentState.hasStartedToRecover()
-                            ? Optional.of(new SensorFailedRecovering(currentState.uuid))
-                            : Optional.empty();
-                    case LOW -> currentState.isReadyToRecover()
-                            ? Optional.of(new SensorRecovered(command.uuid()))
-                            : Optional.of(new SensorStartedRecovering(command.uuid(), currentState.countDownToRecover()));
-                };
-
-        Status<?> UNKNOW = (final UpdateCurrentState command, final CurrentState currentState) ->
+        UNKNOWN(
+                (final UpdateCurrentState command, final CurrentState currentState) ->
                         switch (command.measurementType()) {
                             case HIGH -> Optional.of(new SensorBecameWarning(command.uuid()));
                             case LOW -> Optional.of(new SensorRecovered(command.uuid));
-                        };
+                        });
+
+        private BiFunction<UpdateCurrentState, CurrentState, Optional<StateEvent>> transitionFunction;
+
+        Status(BiFunction<UpdateCurrentState, CurrentState, Optional<StateEvent>> function) {
+            this.transitionFunction = function;
+        }
+
+        Optional<StateEvent> apply(UpdateCurrentState command, CurrentState currentState) {
+            return transitionFunction.apply(command, currentState);
+        }
     }
 
     public static record UpdateCurrentState(
@@ -112,22 +124,11 @@ public class SensorState {
 
             // non activated sensor
             if (currentState == null) {
-                return (Optional<E>) Status.UNKNOW.apply(command, currentState);
-            }
-            else{
+                return (Optional<E>) Status.UNKNOWN.apply(command, currentState);
+            } else {
                 return (Optional<E>) currentState.status.apply(command, currentState);
             }
         }
-
-
-        private boolean isBelowThreshold(int measurement) {
-            return !isAboveThreshold(measurement);
-        }
-
-        private boolean isAboveThreshold(int measurement) {
-            return measurement > 2_000;
-        }
-
     }
 
     public static class StateEventHandler<E extends StateEvent>
