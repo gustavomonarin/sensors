@@ -7,11 +7,10 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties("com.acme.sensors.kafka")
 public class KafkaConfig {
 
-    private String sensorMeasurementsTopic = "sensor-measurements";
-    private String sensorStateStateStoreName = "sensor-status";
-    private String sensorStateEventsTopic = "sensor-events";
-    private String sensorMetricsStateStoreName = "sensor-metrics";
-
+    private String sensorMeasurementsTopic = "sensors-measurements";
+    private String sensorStateStateStoreName = "state";
+    private String sensorStateEventsTopic = "sensors-events";
+    private String sensorMetricsStateStoreName = "metrics";
 
     public String getSensorMeasurementsTopic() {
         return sensorMeasurementsTopic;

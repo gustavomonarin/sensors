@@ -12,8 +12,8 @@ import java.lang.annotation.Target;
 @EmbeddedKafka(
         partitions = 1,
         topics = {
-                "sensor-measurements",
-                "sensor-events",
+                "sensors-measurements",
+                "sensors-events",
         },
         bootstrapServersProperty = "spring.kafka.bootstrap-servers"
 )
