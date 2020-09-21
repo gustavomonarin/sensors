@@ -1,33 +1,32 @@
 package com.acme.sensors.domain;
 
-import com.acme.sensors.adapters.http.SensorStatusResponse;
 import com.acme.sensors.domain.SensorMeasurement.CollectNewMeasurement;
 import com.acme.sensors.domain.SensorMeasurement.MeasurementCollected;
-import org.springframework.http.ResponseEntity;
+import com.acme.sensors.domain.SensorMeasurement.MeasurementEventPublisher;
+import com.acme.sensors.domain.SensorMetrics.SensorMetric;
+import com.acme.sensors.domain.SensorState.CurrentState;
+import com.acme.sensors.domain.SensorState.SensorStateRepository;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+
+import static com.acme.sensors.domain.SensorMetrics.*;
 
 @Service
 public class SensorApplicationService {
 
-    public interface MeasurementEventPublisher {
-        Mono<MeasurementCollected> publish(MeasurementCollected measurement);
-    }
-
-    public interface SensorStateRepository {
-        Mono<SensorState.CurrentState> currentStateFor(String anUuid);
-    }
-
     private final MeasurementEventPublisher eventPublisher;
     private SensorStateRepository stateRepository;
+    private SensorMetricRepository metricRepository;
 
-    public SensorApplicationService(MeasurementEventPublisher eventPublisher,
-                                    SensorStateRepository stateRepository) {
+    public SensorApplicationService(final MeasurementEventPublisher eventPublisher,
+                                    final SensorStateRepository stateRepository,
+                                    final SensorMetricRepository metricRepository) {
         this.eventPublisher = eventPublisher;
         this.stateRepository = stateRepository;
+        this.metricRepository = metricRepository;
     }
 
-    public Mono<MeasurementCollected> collectNewMeasurement(CollectNewMeasurement command) {
+    public Mono<MeasurementCollected> collectNewMeasurement(final CollectNewMeasurement command) {
         return eventPublisher.publish(
                 new MeasurementCollected(
                         command.uuid(),
@@ -35,8 +34,13 @@ public class SensorApplicationService {
                         command.time()));
     }
 
-    public Mono<SensorState.CurrentState> currentStateFor(String uuid) {
+    public Mono<CurrentState> currentStateFor(final String uuid) {
         return stateRepository.currentStateFor(uuid);
+    }
+
+
+    public Mono<SensorMetric> metricsForTheLast30Days(final String anUuid) {
+        return metricRepository.forTheLast30Days(anUuid);
     }
 
 }

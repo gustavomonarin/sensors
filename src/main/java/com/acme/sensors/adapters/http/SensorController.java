@@ -11,14 +11,15 @@ import reactor.core.publisher.Mono;
 @RequestMapping("/api/v1/sensors")
 public class SensorController {
 
-    private SensorApplicationService applicationService;
+    private final SensorApplicationService applicationService;
 
-    public SensorController(SensorApplicationService applicationService) {
+    public SensorController(final SensorApplicationService applicationService) {
         this.applicationService = applicationService;
     }
 
     @PostMapping(value = "{uuid}/mesurements", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<ResponseEntity> newMeasurement(@PathVariable String uuid, @RequestBody CollectMeasurementRequest req) {
+    public Mono<ResponseEntity> newMeasurement(final @PathVariable String uuid,
+                                               final @RequestBody CollectMeasurementRequest req) {
         return
                 applicationService
                         .collectNewMeasurement(new CollectNewMeasurement(
@@ -30,15 +31,23 @@ public class SensorController {
     }
 
     @GetMapping(value = "{uuid}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<ResponseEntity<SensorStatusResponse>> status(@PathVariable String uuid) {
+    public Mono<ResponseEntity<SensorStatusResponse>> status(final @PathVariable String uuid) {
+
         return
                 applicationService
                         .currentStateFor(uuid)
-                        .map(currentState ->
-                                ResponseEntity.ok()
-                                        .body(SensorStatusResponse
-                                                .fromState(currentState)));
+                        .map(SensorStatusResponse::fromState)
+                        .map(ResponseEntity::ok);
     }
 
+    @GetMapping(value = "{uuid}/metrics", produces = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<ResponseEntity<SensorMetricResponse>> metrics(final @PathVariable String uuid) {
 
+        return
+                applicationService
+                        .metricsForTheLast30Days(uuid)
+                        .map(SensorMetricResponse::fromMetric)
+                        .map(ResponseEntity::ok);
+
+    }
 }

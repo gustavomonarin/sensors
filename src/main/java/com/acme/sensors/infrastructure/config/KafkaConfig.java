@@ -10,7 +10,7 @@ public class KafkaConfig {
     private String sensorMeasurementsTopic = "sensor-measurements";
     private String sensorStateStateStoreName = "sensor-status";
     private String sensorStateEventsTopic = "sensor-events";
-
+    private String sensorMetricsStateStoreName = "sensor-metrics";
 
 
     public String getSensorMeasurementsTopic() {
@@ -35,5 +35,13 @@ public class KafkaConfig {
 
     public void setSensorStateEventsTopic(String sensorStateEventsTopic) {
         this.sensorStateEventsTopic = sensorStateEventsTopic;
+    }
+
+    public String getSensorMetricsStateStoreName() {
+        return sensorMetricsStateStoreName;
+    }
+
+    public void setSensorMetricsStateStoreName(String sensorMetricsStateStoreName) {
+        this.sensorMetricsStateStoreName = sensorMetricsStateStoreName;
     }
 }

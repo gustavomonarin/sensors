@@ -2,11 +2,16 @@ package com.acme.sensors.domain;
 
 import com.acme.sensors.domain.SensorState.StateEvent.*;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import reactor.core.publisher.Mono;
 
 import java.util.Optional;
 import java.util.function.BiFunction;
 
 public class SensorState {
+
+    public interface SensorStateRepository {
+        Mono<CurrentState> currentStateFor(String anUuid);
+    }
 
     public static record CurrentState(String uuid, Status status, Integer neededMeasurementsToRecover)
             implements Definitions.State {
@@ -156,4 +161,5 @@ public class SensorState {
             return null;
         }
     }
+
 }

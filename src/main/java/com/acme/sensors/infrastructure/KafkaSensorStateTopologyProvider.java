@@ -3,14 +3,14 @@ package com.acme.sensors.infrastructure;
 import com.acme.sensors.domain.Definitions;
 import com.acme.sensors.domain.Definitions.StatefulCommandHandler;
 import com.acme.sensors.domain.Definitions.StatefulEventHandler;
-import com.acme.sensors.domain.SensorMeasurement;
+import com.acme.sensors.domain.SensorMeasurement.MeasurementCollected;
 import com.acme.sensors.domain.SensorState;
+import com.acme.sensors.domain.SensorState.StateEvent;
 import com.acme.sensors.infrastructure.config.KafkaConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
-import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.kstream.Transformer;
@@ -27,31 +27,35 @@ import java.util.Optional;
 
 @EnableKafkaStreams
 @Configuration(proxyBeanMethods = false)
-public class SensorStateTopologyProvider {
+public class KafkaSensorStateTopologyProvider {
 
     @Bean
-    public KStream<String, SensorState.StateEvent> sensorStatusTopology(
-            KafkaConfig config,
-            StreamsBuilder builder,
-            ObjectMapper objectMapper) {
+    public StoreBuilder<KeyValueStore<String, SensorState.CurrentState>> sensorStateStoreBuilder(
+            final StreamsBuilder builder,
+            final KafkaConfig config,
+            final ObjectMapper objectMapper) {
 
-        JsonSerde<SensorMeasurement.MeasurementCollected> measurementSerde = new JsonSerde<>(SensorMeasurement.MeasurementCollected.class, objectMapper);
-        JsonSerde<SensorState.CurrentState> stateSerde = new JsonSerde<>(SensorState.CurrentState.class, objectMapper);
-
-        StoreBuilder<KeyValueStore<String, SensorState.CurrentState>> stateStoreBuilder = Stores
+        var sensorStateStore = Stores
                 .keyValueStoreBuilder(
                         Stores.persistentKeyValueStore(
                                 config.getSensorStateStateStoreName()),
                         Serdes.String(),
-                        stateSerde
+                        new JsonSerde<>(SensorState.CurrentState.class, objectMapper)
                 );
 
-        KStream<String, SensorState.StateEvent> sensorStateStream = builder
-                .addStateStore(stateStoreBuilder)
-                .stream(
-                        config.getSensorMeasurementsTopic(),
-                        Consumed.with(Serdes.String(), measurementSerde)
-                )
+        //spring should actually do automatically add it, or maybe was springcloudstream?
+        builder.addStateStore(sensorStateStore);
+
+        return sensorStateStore;
+    }
+
+
+    @Bean
+    public KStream<String, StateEvent> sensorStatusTopology(final KafkaConfig config,
+                                                            final KStream<String, MeasurementCollected> measurementsStream,
+                                                            final ObjectMapper objectMapper) {
+
+        var sensorStateStream = measurementsStream
                 .mapValues(event -> new SensorState.UpdateCurrentState(event.uuid(), event.co2()))
                 .transform(() -> new StatefulAggregateProcessor<>(
                                 config.getSensorStateStateStoreName(),
@@ -64,7 +68,7 @@ public class SensorStateTopologyProvider {
                 Produced.with(
                         Serdes.String(),
                         new JsonSerde<>(
-                                SensorState.StateEvent.class,
+                                StateEvent.class,
                                 objectMapper)));
 
         return sensorStateStream;
