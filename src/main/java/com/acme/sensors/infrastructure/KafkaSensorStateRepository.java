@@ -1,7 +1,7 @@
 package com.acme.sensors.infrastructure;
 
-import com.acme.sensors.domain.SensorApplicationService;
 import com.acme.sensors.domain.SensorState;
+import com.acme.sensors.domain.SensorState.SensorStateRepository;
 import com.acme.sensors.infrastructure.config.KafkaConfig;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StoreQueryParameters;
@@ -15,15 +15,14 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
 @Component
-public class KafkaSensorStateRepository implements SensorApplicationService.SensorStateRepository {
+public class KafkaSensorStateRepository implements SensorStateRepository {
 
     private final StreamsBuilderFactoryBean streamsBuilderFactoryBean;
     private final KafkaConfig config;
     private final RetryTemplate retryTemplate;
 
-    public KafkaSensorStateRepository(
-            StreamsBuilderFactoryBean streamsBuilderFactoryBean,
-            KafkaConfig config) {
+    public KafkaSensorStateRepository(final StreamsBuilderFactoryBean streamsBuilderFactoryBean,
+                                      final KafkaConfig config) {
 
         this.streamsBuilderFactoryBean = streamsBuilderFactoryBean;
         this.config = config;

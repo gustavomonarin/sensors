@@ -2,6 +2,7 @@ package com.acme.sensors.adapters.http;
 
 import com.acme.sensors.domain.SensorApplicationService;
 import com.acme.sensors.domain.SensorMeasurement.MeasurementCollected;
+import com.acme.sensors.domain.SensorMetrics;
 import com.acme.sensors.domain.SensorState;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,4 +67,21 @@ class SensorControllerTest {
 
     }
 
+    @Test
+    void metrics() {
+
+        when(applicationService.metricsForTheLast30Days("my-uuid"))
+                .thenReturn(Mono.just(new SensorMetrics.SensorMetric("my-uuid", 2, 1800, 1200)));
+
+        webTestClient.get()
+                .uri("/api/v1/sensors/my-uuid/metrics")
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().is2xxSuccessful()
+                .expectBody()
+                .jsonPath("$.maxLast30Days").isEqualTo(1200)
+                .jsonPath("$.avgLast30Days").isEqualTo(900)
+                .consumeWith(document("metrics-last-30-days"));
+
+    }
 }

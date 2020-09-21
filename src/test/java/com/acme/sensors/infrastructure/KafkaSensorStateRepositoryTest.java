@@ -1,8 +1,9 @@
 package com.acme.sensors.infrastructure;
 
-import com.acme.sensors.domain.SensorApplicationService.SensorStateRepository;
 import com.acme.sensors.domain.SensorMeasurement.MeasurementCollected;
+import com.acme.sensors.domain.SensorMeasurement.MeasurementEventPublisher;
 import com.acme.sensors.domain.SensorState;
+import com.acme.sensors.domain.SensorState.SensorStateRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -10,7 +11,6 @@ import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.UUID;
 
-import static com.acme.sensors.domain.SensorApplicationService.MeasurementEventPublisher;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
