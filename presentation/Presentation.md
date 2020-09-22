@@ -2,8 +2,24 @@
 # Architecture overview
 
 
+---
+
+# But, Before
+
+* What is the problem again?
+* How can we understand the problem talking in the same language as product
+
+* Event Storming / eventmodeling.org
+
+* Created by Alberto, an experienced UML consultant
+  - Bring together Domain experts and Developers
+  - Collaboratively
+  - Simply
+  - Interactive and Iterative
+  - Throw away, try again next week
 
 ---
+
 # Represented as events and projections
 
 ![Event storming](event_storming.png)
@@ -33,8 +49,17 @@
 
 # Demo
  
+ 
+---
+
 [![asciicast](https://asciinema.org/a/8ZL0EHLs0Fyezf7ljPcXjoG8R.png)](https://asciinema.org/a/8ZL0EHLs0Fyezf7ljPcXjoG8R
 )
+
+---
+
+[![asciicast](https://asciinema.org/a/wNAdkZuYKo6gBnndZuTMnvKtj.png)](https://asciinema.org/a/wNAdkZuYKo6gBnndZuTMnvKtj
+)
+
 
 ---
 # Why?
