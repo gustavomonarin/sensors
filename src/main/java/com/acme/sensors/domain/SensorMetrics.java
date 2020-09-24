@@ -4,6 +4,8 @@ import reactor.core.publisher.Mono;
 
 import java.util.Iterator;
 import java.util.Optional;
+import java.util.Spliterators;
+import java.util.stream.StreamSupport;
 
 public abstract class SensorMetrics {
 
@@ -19,30 +21,22 @@ public abstract class SensorMetrics {
 
         public static final SensorMetric MISSING = new SensorMetric(null, 0, 0, 0);
 
-        public static SensorMetric fromRange(final Iterator<SensorMetric> metrics) {
+        public static Optional<SensorMetric> fromRange(final Iterator<SensorMetric> metrics) {
 
-            return aggregateRange(MISSING, metrics);
+            return StreamSupport.stream(
+                    Spliterators.spliteratorUnknownSize(metrics, 0), false)
+                    .reduce(
+                            SensorMetric::mergeMeasurement);
 
         }
 
-        private static SensorMetric aggregateRange(final SensorMetric initial, final Iterator<SensorMetric> metrics) {
-
-            var aggregated = initial;
-
-            if (metrics.hasNext()) {
-                var current = metrics.next();
-
-                aggregated = aggregateRange(
-                        new SensorMetric(
-                                initial.uuid,
-                                initial.measurements() + current.measurements(),
-                                initial.sum() + current.sum(),
-                                Math.max(initial.max(), current.max())
-                        ),
-                        metrics);
-            }
-
-            return aggregated;
+        public SensorMetric mergeMeasurement(final SensorMetric anotherMeasurement) {
+            return new SensorMetric(
+                    this.uuid(),
+                    this.measurementsSummed(anotherMeasurement.measurements()),
+                    this.sum(anotherMeasurement.sum()),
+                    this.max(anotherMeasurement.max())
+            );
         }
 
         public SensorMetric addMeasurement(final String uuid, final Integer newMeasurement) {
@@ -51,15 +45,32 @@ public abstract class SensorMetrics {
 
             return new SensorMetric(
                     uuid,
-                    this.measurements + 1,
-                    sum + newMeasurement,
-                    Math.max(newMeasurement, max)
+                    this.measurementsIncremented(),
+                    this.sum(newMeasurement),
+                    this.max(newMeasurement)
             );
         }
 
         public Optional<Integer> avg() {
             return measurements > 0 ? Optional.of(sum / measurements) : Optional.empty();
         }
+
+        private Integer sum(Integer anotherMeasurement) {
+            return this.sum() + anotherMeasurement;
+        }
+
+        private Integer max(Integer anotherMax) {
+            return Math.max(this.max(), anotherMax);
+        }
+
+        private Integer measurementsIncremented() {
+            return this.measurements() + 1;
+        }
+
+        private Integer measurementsSummed(Integer anotherMeasurement) {
+            return this.measurements() + anotherMeasurement;
+        }
+
     }
 
 }
