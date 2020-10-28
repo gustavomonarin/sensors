@@ -9,6 +9,8 @@ A kafka backed, immutability experimentation, iot co2 sensor assessment with the
 
 ```GET(/{uuid}/alerts)```: The aggregated co2 level raised alerts. 
 
+:gift: [Presentation](https://gustavomonarin.github.io/sensors/presentation/Presentation.html)
+
 ## Motivation of the implementation
 I have done the following implementation to experiment a different way to mitigate some old problems:
 * Kafka streams is a beautifully designed api, for who loves sql and which in most of the cases pollutes the domain
